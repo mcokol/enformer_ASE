@@ -1,7 +1,10 @@
 import pandas as pd
 
+# input: gene model, experimental rpkm (60k genes)
+# output: result (rows are genes with single TSS, 5 columns are gene, rpkm, strand, chrom, pos)
+
 genemodel = "MANE/1.3"
-# genemodel = "refSeq_v20240129"
+genemodel = "refSeq_v20240129"
 genemodel = "GENCODE/46/comprehensive/ALL"
 genemodel = "GENCODE/46/basic/PRI"
 genemodelpath = "hg38/gene_models/" + genemodel
@@ -37,14 +40,25 @@ df = df[df['gene'].isin(unique_genes)]
 rpkmdf = pd.read_csv("../input/median_rpkms.txt", sep="\t")
 
 ### Perform inner merge
+### result has five columns gene, rpkm, strand, chrom, pos
 result = pd.merge(df, rpkmdf, on="gene", how="inner")
 result = result.dropna()
 
-### if chromosomes do not match, drop those rows
+# result size for different gene models
+# genemodel = "MANE/1.3                         18724
+# genemodel = "refSeq_v20240129"                10515
+# genemodel = "GENCODE/46/comprehensive/ALL"    17711
+# genemodel = "GENCODE/46/basic/PRI"            21692
+
+### if chromosomes do not match, drop those rows (this didnt happen for these 4 gene models)
 # Keep only rows where chrom_x equals chrom_y
 result = result[result["chrom_x"] == result["chrom_y"]]
 result = result.drop(columns=["chrom_y"]).rename(columns={"chrom_x": "chrom"})
 print(result.shape)
+
+# renameand order columns to match onenote plan
+result = result.rename(columns={'median_rpkm': 'rpkm'})
+result = result[['gene', 'rpkm', 'strand', 'chrom', 'pos']]
 
 ### replace / so it isnt interpreted as directory
 genemodel = genemodel.replace("/", "_")
