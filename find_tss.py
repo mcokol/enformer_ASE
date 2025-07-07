@@ -6,7 +6,7 @@ import pandas as pd
 genemodel = "MANE/1.3"
 genemodel = "refSeq_v20240129"
 genemodel = "GENCODE/46/comprehensive/ALL"
-genemodel = "GENCODE/46/basic/PRI"
+# genemodel = "GENCODE/46/basic/PRI"
 genemodelpath = "hg38/gene_models/" + genemodel
 
 from dae.genomic_resources.gene_models import build_gene_models_from_resource_id
@@ -60,7 +60,12 @@ print(result.shape)
 result = result.rename(columns={'median_rpkm': 'rpkm'})
 result = result[['gene', 'rpkm', 'strand', 'chrom', 'pos']]
 
+# let's only work with 100 first
+result = result.head(100)
+
+
+
 ### replace / so it isnt interpreted as directory
 genemodel = genemodel.replace("/", "_")
-outputpath = "../output/" + genemodel
+outputpath = "../output/" + genemodel + "_singleTSS.txt"
 result.to_csv(outputpath, sep="\t", index=False)
