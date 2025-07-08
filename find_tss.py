@@ -5,7 +5,7 @@ import pandas as pd
 
 genemodel = "MANE/1.3"
 genemodel = "refSeq_v20240129"
-genemodel = "GENCODE/46/comprehensive/ALL"
+# genemodel = "GENCODE/46/comprehensive/ALL"
 # genemodel = "GENCODE/46/basic/PRI"
 genemodelpath = "hg38/gene_models/" + genemodel
 
@@ -60,8 +60,8 @@ print(result.shape)
 result = result.rename(columns={'median_rpkm': 'rpkm'})
 result = result[['gene', 'rpkm', 'strand', 'chrom', 'pos']]
 
-# let's only work with 100 first
-result = result.head(100)
+# # let's only work with 100 first
+# result = result.head(100)
 
 
 
