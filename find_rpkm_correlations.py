@@ -10,9 +10,9 @@ cage_rows = enformertracks[enformertracks["description"].str.contains("cage:", c
 cage_tracks = cage_rows['index'].tolist()
 
 genemodel = "refSeq_v20240129"
-genemodel = "MANE/1.3"
-genemodel = "GENCODE/46/comprehensive/ALL"
-genemodel = "GENCODE/46/basic/PRI"
+# genemodel = "MANE/1.3"
+# genemodel = "GENCODE/46/comprehensive/ALL"
+# genemodel = "GENCODE/46/basic/PRI"
 genemodel = genemodel.replace("/", "_")
 
 # read the gene, RPKM, strand, chrom, pos
@@ -64,13 +64,17 @@ def compute_bin_correlations(h5file_path, track_indices, selectedbins, rpkm_seri
 
 rpkm = pd.to_numeric(df["rpkm"], errors="coerce")
 
+mytracks = list(range(5313))
+mybins = list(range(896))
 
 input_file_name = "../output/" + genemodel + "_singleTSS.h5"
 plus_correlations_df = compute_bin_correlations(
     input_file_name,
-    track_indices=cage_tracks, ## for full run change to list(range(5313))
-    # selectedbins = list(range(896)), ### for full run change to this
-    selectedbins=[400, 410, 420, 430, 435, 442, 443, 444, 445, 446, 447, 448, 449, 450, 451, 452, 455, 460, 470, 480, 490, 500],
+    # track_indices=cage_tracks, ## for full run change to list(range(5313))
+    track_indices=mytracks,
+
+    selectedbins = mybins, ### for full run change to this
+    # selectedbins=[400, 410, 420, 430, 435, 442, 443, 444, 445, 446, 447, 448, 449, 450, 451, 452, 455, 460, 470, 480, 490, 500],
     rpkm_series=rpkm.iloc[plus_strand_indices],
     variantindices = plus_strand_indices
 )
@@ -83,9 +87,11 @@ plus_correlations_df.to_csv(outputpath, sep="\t", index=False)
 
 minus_correlations_df = compute_bin_correlations(
     input_file_name,
-    track_indices=cage_tracks, ## for full run change to list(range(5313))
-    # selectedbins = list(range(896)), ### for full run change to this
-    selectedbins=[400, 410, 420, 430, 435, 442, 443, 444, 445, 446, 447, 448, 449, 450, 451, 452, 455, 460, 470, 480, 490, 500],
+    # track_indices=cage_tracks, ## for full run change to list(range(5313))
+    track_indices=mytracks,
+
+    selectedbins = mybins, ### for full run change to this
+    # selectedbins=[400, 410, 420, 430, 435, 442, 443, 444, 445, 446, 447, 448, 449, 450, 451, 452, 455, 460, 470, 480, 490, 500],
     rpkm_series=rpkm.iloc[plus_strand_indices],
     variantindices = minus_strand_indices
 )
