@@ -2,10 +2,8 @@ import sys
 import h5py
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
 
 # Redo the parameter parsing through the argparse module
-# genemodel = "GENCODE_46_basic_PRI"
 genemodel = "refSeq_v20240129"
 output_dir = "../output"
 gene_tss_file = f"{output_dir}/{genemodel}_singleTSS.txt"
