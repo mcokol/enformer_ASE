@@ -3,7 +3,7 @@ import pandas as pd
 # input: gene model, experimental rpkm (60k genes)
 # output: result (rows are genes with single TSS, 5 columns are gene, rpkm, strand, chrom, pos)
 
-genemodel = "MANE/1.3"
+# genemodel = "MANE/1.3"
 genemodel = "refSeq_v20240129"
 # genemodel = "GENCODE/46/comprehensive/ALL"
 # genemodel = "GENCODE/46/basic/PRI"
