@@ -1,6 +1,7 @@
-import numpy as np
 import pandas as pd
 import h5py
+import matplotlib.pyplot as plt
+import numpy as np
 
 
 # read enformertracks
@@ -9,46 +10,60 @@ enformertracks = enformertracks[['index', 'description']]
 cage_rows = enformertracks[enformertracks["description"].str.contains("cage:", case=False, na=False)].reset_index(drop=True)
 cage_tracks = cage_rows['index'].tolist()
 
+LCL_row = enformertracks[enformertracks["description"].str.contains("CAGE:B lymphoblastoid cell line", case=False, na=False)].reset_index(drop=True)
+LCL_track = LCL_row['index'].tolist()[0]
+
 genemodel = "refSeq_v20240129"
-# genemodel = "MANE/1.3"
-# genemodel = "GENCODE/46/comprehensive/ALL"
-# genemodel = "GENCODE/46/basic/PRI"
 genemodel = genemodel.replace("/", "_")
 
 
+# --- Plot only LCL CAGE correlation for all bins
+fig, axes = plt.subplots(2, 1, figsize=(10, 6), sharex=True)
 
-### read correlations, 5313 tracks as rows, 896 tracks 
-input_file_name = "../output/" + genemodel + "_plus_cage_correlations.txt"
-df2 = pd.read_csv(input_file_name, sep='\t')
+for i, strand in enumerate(["plus", "minus"]):
+    input_file_name = f"../output/{genemodel}_singleTSS-Corr_{strand}.h5"
+    
+    with h5py.File(input_file_name, "r") as epf:
+        correlations = epf["C"][:]
+    
+    axes[i].plot(correlations[:, LCL_track])
+    axes[i].set_ylabel("Correlation")
+    axes[i].set_title(f"LCL CAGE correlation in {strand} strand")
+    axes[i].grid(True)
 
-
-# # Get the row and column of the minimum value
-# min_row, min_col = df2.stack().idxmin()
-
-# # Get the row and column of the maximum value
-# max_row, max_col = df2.stack().idxmax()
-
-# min_value = df2.min().min()  # Minimum value across all columns
-# max_value = df2.max().max()  # Maximum value across all columns
-
-# # Print the results
-# print(f"Minimum value: {min_value} at row {min_row}, column {min_col}")
-# print(f"Maximum value: {max_value} at row {max_row}, column {max_col}")
-
+axes[1].set_xlabel("Bin index")
+plt.tight_layout()
+plt.show()
 
 
-# # df2 = df2.iloc[:, ::10]
 
-import matplotlib.pyplot as plt
+# --- Plot LCL CAGE correlation and all other CAGE experiments in less bins
+fig, axes = plt.subplots(2, 1, figsize=(10, 6), sharex=True)
+bin_start, bin_end = 400, 500
 
-# Extract row 5110
-row_5110 = df2.iloc[5109]  # Indexing is 0-based, so row 5110 is at index 5109
+for i, strand in enumerate(["plus", "minus"]):
+    input_file_name = f"../output/{genemodel}_singleTSS-Corr_{strand}.h5"
+    
+    with h5py.File(input_file_name, "r") as epf:
+        correlations = epf["C"][:]  # shape: (bins, tracks)
+    
+    ax = axes[i]
 
-# Create a plot
-plt.figure(figsize=(10, 6))
-plt.plot(row_5110.values)
-plt.xlabel('Bins')
-plt.ylabel('Values')
-plt.title('Plot of Row 5110')
-plt.grid(True)
+    # Plot all CAGE tracks in light gray
+    for track_index in cage_tracks:
+        ax.plot(correlations[bin_start:bin_end, track_index], color="lightgray", linewidth=0.8, alpha=0.7)
+
+    # Plot LCL track in dark blue
+    ax.plot(correlations[bin_start:bin_end, LCL_track], color="navy", linewidth=2, label="LCL")
+
+    ax.set_ylabel("Correlation")
+    ax.set_title(f"{strand} strand")
+    ax.set_xticks(np.arange(0, bin_end - bin_start, 10))
+    ax.set_xticklabels(np.arange(bin_start, bin_end, 10))
+    ax.axvline(x=448 - bin_start, color="red", linestyle="--", linewidth=1)
+
+    ax.grid(True)
+
+axes[1].set_xlabel("Bin index")
+plt.tight_layout()
 plt.show()
