@@ -34,7 +34,7 @@ E = enformer_predictions[:, :, :]
 N, B, T = E.shape
 
 
-def select_genes(gene_tss_df, strand, method="ALL", n=100):
+def select_genes(gene_tss_df, strand, method="ALL", n=100, random_state=42):
     strand_df = gene_tss_df[gene_tss_df["strand"] == strand].copy()
 
     if method.upper() == "ALL":
@@ -55,6 +55,27 @@ def select_genes(gene_tss_df, strand, method="ALL", n=100):
         # Combine and remove duplicates (in case of ties)
         selected = pd.concat([lowest, highest, median]).drop_duplicates()
         return selected.index.tolist()
+    
+    elif method.upper() == "BALANCED":
+        strand_df = strand_df.sort_values("rpkm")
+        quantiles = np.linspace(0, 1, 11)  # 0%, 10%, ..., 100%
+        bins = strand_df["rpkm"].quantile(quantiles).values
+    
+        selected_indices = []
+    
+        for i in range(10):
+            lower, upper = bins[i], bins[i + 1]
+            bin_df = strand_df[(strand_df["rpkm"] >= lower) & (strand_df["rpkm"] <= upper)]
+            
+            if len(bin_df) >= n:
+                selected = bin_df.sample(n=n, random_state=random_state)
+            else:
+                selected = bin_df  # if not enough, take all
+    
+            selected_indices.extend(selected.index.tolist())
+
+        print(f"BALANCED selection for strand {strand}: {len(selected_indices)} genes selected.")
+        return selected_indices
 
     else:
         raise ValueError(f"Unknown selection method: {method}")
@@ -66,8 +87,8 @@ for strand in ["-", '+']:
     print(f"Processing strand: {strand}")
     # strand_indices = gene_tss_df[gene_tss_df["strand"] == strand].index.tolist()
     # R = gene_tss_df.rpkm[strand_indices].values
-    
-    strand_indices = select_genes(gene_tss_df, strand, method="EXTREMES", n=100)
+    mymethod = 'BALANCED' #'EXTREMES'
+    strand_indices = select_genes(gene_tss_df, strand, method=mymethod, n=100)
     R = gene_tss_df.loc[strand_indices, "rpkm"].values
         
     R_centered = R - np.nanmean(R)
@@ -109,7 +130,7 @@ for strand in ["-", '+']:
     C = np.concatenate(C_chunks, axis=0)  # shape: (B, T)
 
     strand_name = {"+" : "plus", "-" : "minus"}[strand]
-    with h5py.File(f"{output_file_prefix}-Corr_{strand_name}_Extremes.h5", "w") as f:
+    with h5py.File(f"{output_file_prefix}-Corr_{strand_name}_{mymethod}.h5", "w") as f:
         f.create_dataset("C", data=C)
     
     # # Slow computation for verification

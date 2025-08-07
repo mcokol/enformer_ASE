@@ -16,11 +16,13 @@ LCL_row = enformertracks[enformertracks["description"].str.contains("CAGE:B lymp
 LCL_track = LCL_row['index'].tolist()[0]
 
 
+plotname = "_Extremes"
+plotname = "_BALANCED"
 
 # --- Plot only LCL CAGE correlation for all bins
 fig, axes = plt.subplots(2, 1, figsize=(10, 6), sharex=True)
 for i, strand in enumerate(["plus", "minus"]):
-    input_file_name = f"../output/{genemodel}_singleTSS-Corr_{strand}.h5"
+    input_file_name = f"../output/{genemodel}_singleTSS-Corr_{strand}{plotname}.h5"
     
     with h5py.File(input_file_name, "r") as epf:
         correlations = epf["C"][:]
@@ -32,7 +34,7 @@ for i, strand in enumerate(["plus", "minus"]):
 
 axes[1].set_xlabel("Bin index")
 plt.tight_layout()
-output_plot_file = f"../output/{genemodel}_LCL_CAGE_correlation_plot.png"
+output_plot_file = f"../output/{genemodel}_LCL_CAGE_correlation_plot{plotname}.png"
 plt.savefig(output_plot_file, dpi=300)
 plt.show()
 
@@ -43,7 +45,7 @@ fig, axes = plt.subplots(2, 1, figsize=(10, 6), sharex=True)
 bin_start, bin_end = 400, 500
 
 for i, strand in enumerate(["plus", "minus"]):
-    input_file_name = f"../output/{genemodel}_singleTSS-Corr_{strand}.h5"
+    input_file_name = f"../output/{genemodel}_singleTSS-Corr_{strand}{plotname}.h5"
     
     with h5py.File(input_file_name, "r") as epf:
         correlations = epf["C"][:]  # shape: (bins, tracks)
@@ -64,7 +66,7 @@ for i, strand in enumerate(["plus", "minus"]):
 
 axes[1].set_xlabel("Bin index")
 plt.tight_layout()
-output_plot_file = f"../output/{genemodel}_CAGE_correlation_plot.png"
+output_plot_file = f"../output/{genemodel}_CAGE_correlation_plot{plotname}.png"
 plt.savefig(output_plot_file, dpi=300)
 plt.show()
 
@@ -74,7 +76,7 @@ fig, axes = plt.subplots(2, 1, figsize=(10, 6), sharex=True)
 bin_start, bin_end = 400, 500
 
 for i, strand in enumerate(["plus", "minus"]):
-    input_file_name = f"../output/{genemodel}_singleTSS-Corr_{strand}.h5"
+    input_file_name = f"../output/{genemodel}_singleTSS-Corr_{strand}{plotname}.h5"
     
     with h5py.File(input_file_name, "r") as epf:
         correlations = epf["C"][:]  # shape: (bins, tracks)
@@ -96,6 +98,6 @@ for i, strand in enumerate(["plus", "minus"]):
 
 axes[1].set_xlabel("Bin index")
 plt.tight_layout()
-output_plot_file = f"../output/{genemodel}_ALL_correlation_plot.png"
+output_plot_file = f"../output/{genemodel}_ALL_correlation_plot{plotname}.png"
 plt.savefig(output_plot_file, dpi=300)
 plt.show()
