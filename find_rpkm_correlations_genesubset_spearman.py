@@ -2,6 +2,7 @@ import sys
 import h5py
 import pandas as pd
 import numpy as np
+from scipy.stats import rankdata
 
 # Redo the parameter parsing through the argparse module
 genemodel = "refSeq_v20240129"
@@ -10,13 +11,13 @@ genemodel = "refSeq_v20240129"
 output_dir = "../output"
 gene_tss_file = f"{output_dir}/{genemodel}_singleTSS.txt"
 enformer_predictions_file = f"{output_dir}/{genemodel}_singleTSS.h5"
-output_file_prefix = f"{output_dir}/{genemodel}_singleTSS"
+output_file_prefix = f"{output_dir}/{genemodel}_spearman_singleTSS"
 
 
-### for variants13 and variants14 experiments
-gene_tss_file = '../output/variants13_singleTSS.txt' #f"{output_dir}/{genemodel}_singleTSS.txt"
-enformer_predictions_file = '../output/variants13_singleTSS.h5' #f"{output_dir}/{genemodel}_singleTSS.h5"
-output_file_prefix = '../output/variants13_singleTSS' #f"{output_dir}/{genemodel}_singleTSS"
+# ### for variants13 and variants14 experiments
+# gene_tss_file = '../output/variants13_singleTSS.txt' #f"{output_dir}/{genemodel}_singleTSS.txt"
+# enformer_predictions_file = '../output/variants13_singleTSS.h5' #f"{output_dir}/{genemodel}_singleTSS.h5"
+# output_file_prefix = '../output/variants13_spearman_singleTSS' #f"{output_dir}/{genemodel}_singleTSS"
 
 
 
@@ -91,7 +92,7 @@ def select_genes(gene_tss_df, strand, method="ALL", n=100, random_state=42):
 
 
 
-for strand in ['+']: #["-", '+']:
+for strand in ['+', '-']: #["-", '+']:
     print(f"Processing strand: {strand}")
     # strand_indices = gene_tss_df[gene_tss_df["strand"] == strand].index.tolist()
     # R = gene_tss_df.rpkm[strand_indices].values
@@ -99,7 +100,12 @@ for strand in ['+']: #["-", '+']:
     strand_indices = select_genes(gene_tss_df, strand, method=mymethod, n=100)
     R = gene_tss_df.loc[strand_indices, "rpkm"].values
         
-    R_centered = R - np.nanmean(R)
+    # R_centered = R - np.nanmean(R)
+    # R_std = np.nanstd(R_centered, ddof=1)
+    # N_strand = np.sum(~np.isnan(R))
+    
+    R_ranked = rankdata(R, method='average')
+    R_centered = R_ranked - np.nanmean(R_ranked)
     R_std = np.nanstd(R_centered, ddof=1)
     N_strand = np.sum(~np.isnan(R))
     
@@ -117,8 +123,12 @@ for strand in ['+']: #["-", '+']:
         E_chunk = np.where(np.isinf(E_chunk), np.nan, E_chunk)
         E_chunk = np.clip(E_chunk, -1e6, 1e6)
 
+        E_ranked = np.apply_along_axis(rankdata, 0, E_chunk)
+
         # Centering
-        E_centered = E_chunk - np.nanmean(E_chunk, axis=0, keepdims=True)
+        E_centered = E_ranked - np.nanmean(E_ranked, axis=0, keepdims=True)
+
+        # E_centered = E_chunk - np.nanmean(E_chunk, axis=0, keepdims=True)
         E_std = np.nanstd(E_centered, axis=0, ddof=1)
 
         # Correlation computation

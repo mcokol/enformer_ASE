@@ -4,8 +4,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 genemodel = "refSeq_v20240129"
+genemodel = 'refSeq_v20240129_spearman'
 genemodel = genemodel.replace("/", "_")
-
+strands = ["plus", "minus"]
+# strands = ["plus"]
 
 # read enformertracks
 enformertracks = pd.read_excel('../input/enformer_tracks.xlsx')
@@ -18,10 +20,16 @@ LCL_track = LCL_row['index'].tolist()[0]
 
 plotname = "_Extremes"
 plotname = "_BALANCED"
+plotname = '_ALL'
+### for variants13 and 14
+# genemodel = 'variants13'
+# genemodel = 'variants13_spearman'
+
+
 
 # --- Plot only LCL CAGE correlation for all bins
 fig, axes = plt.subplots(2, 1, figsize=(10, 6), sharex=True)
-for i, strand in enumerate(["plus", "minus"]):
+for i, strand in enumerate(strands):
     input_file_name = f"../output/{genemodel}_singleTSS-Corr_{strand}{plotname}.h5"
     
     with h5py.File(input_file_name, "r") as epf:
@@ -44,7 +52,7 @@ plt.show()
 fig, axes = plt.subplots(2, 1, figsize=(10, 6), sharex=True)
 bin_start, bin_end = 400, 500
 
-for i, strand in enumerate(["plus", "minus"]):
+for i, strand in enumerate(strands):
     input_file_name = f"../output/{genemodel}_singleTSS-Corr_{strand}{plotname}.h5"
     
     with h5py.File(input_file_name, "r") as epf:
@@ -75,7 +83,7 @@ plt.show()
 fig, axes = plt.subplots(2, 1, figsize=(10, 6), sharex=True)
 bin_start, bin_end = 400, 500
 
-for i, strand in enumerate(["plus", "minus"]):
+for i, strand in enumerate(strands):
     input_file_name = f"../output/{genemodel}_singleTSS-Corr_{strand}{plotname}.h5"
     
     with h5py.File(input_file_name, "r") as epf:

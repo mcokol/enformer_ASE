@@ -14,6 +14,15 @@ genemodel = genemodel.replace("/", "_")
 input_file_name = "../output/" + genemodel + "_singleTSS.txt"
 output_file_name = "../output/" + genemodel + "_singleTSS.h5"
 
+
+
+### this is for custom lists (variants13 and 14 from before)
+input_file_name = "../output/variants13_singleTSS.txt"
+output_file_name = "../output/variants13_singleTSS.h5"
+
+
+
+
 print(input_file_name)
 print(output_file_name)
 
