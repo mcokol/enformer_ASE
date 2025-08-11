@@ -8,16 +8,18 @@ from scipy.stats import rankdata
 # Redo the parameter parsing through the argparse module
 genemodel = "refSeq_v20240129"
 # genemodel = "GENCODE_46_basic_PRI"
+genemodel = "MANE/1.3"
+
 
 output_dir = "../output"
 gene_tss_file = f"{output_dir}/{genemodel}_singleTSS.txt"
 enformer_predictions_file = f"{output_dir}/{genemodel}_singleTSS.h5"
 output_file_prefix = f"{output_dir}/{genemodel}_spearman_singleTSS"
 
-### for variants13 experiments
-gene_tss_file = '../output/variants13_singleTSS.txt' #f"{output_dir}/{genemodel}_singleTSS.txt"
-enformer_predictions_file = '../output/variants13_singleTSS.h5' #f"{output_dir}/{genemodel}_singleTSS.h5"
-output_file_prefix = '../output/variants13_spearman_singleTSS' #f"{output_dir}/{genemodel}_singleTSS"
+# ### for variants13 experiments
+# gene_tss_file = '../output/variants13_singleTSS.txt' #f"{output_dir}/{genemodel}_singleTSS.txt"
+# enformer_predictions_file = '../output/variants13_singleTSS.h5' #f"{output_dir}/{genemodel}_singleTSS.h5"
+# output_file_prefix = '../output/variants13_spearman_singleTSS' #f"{output_dir}/{genemodel}_singleTSS"
 
 if len(sys.argv) > 1:
     gene_tss_file = sys.argv[1]
@@ -101,7 +103,6 @@ for strand in ['+', '-']:
         E_ranked = np.apply_along_axis(rankdata, 0, E_chunk)
         # Centering
         E_centered = E_ranked - np.nanmean(E_ranked, axis=0, keepdims=True)
-        # E_centered = E_chunk - np.nanmean(E_chunk, axis=0, keepdims=True)
         E_std = np.nanstd(E_centered, axis=0, ddof=1)
         # Correlation computation
         numerator = np.tensordot(

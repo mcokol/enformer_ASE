@@ -5,6 +5,8 @@ import numpy as np
 
 genemodel = "refSeq_v20240129"
 genemodel = 'refSeq_v20240129_spearman'
+genemodel = "MANE/1.3"
+
 genemodel = genemodel.replace("/", "_")
 strands = ["plus", "minus"]
 # strands = ["plus"]
