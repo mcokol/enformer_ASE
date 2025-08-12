@@ -1,44 +1,37 @@
-
 import sys
+import time
+import csv
+import numpy as np
+import tensorflow_hub as hub
+import tensorflow as tf
+import h5py
+from dae.genomic_resources.reference_genome import build_reference_genome_from_resource_id
 
+# -------------------- config --------------------
 refgenomeid = "hg38/genomes/GRCh38-hg38"
 section_size = 5
 model_path = "https://tfhub.dev/deepmind/enformer/1"
 
-genemodel = "refSeq_v20240129"
-# genemodel = "MANE/1.3"
-# genemodel = "GENCODE/46/comprehensive/ALL"
-# genemodel = "GENCODE/46/basic/PRI"
-
-genemodel = genemodel.replace("/", "_")
+genemodel = "refSeq_v20240129".replace("/", "_")
 input_file_name = "../output/" + genemodel + "_singleTSS.txt"
 output_file_name = "../output/" + genemodel + "_singleTSS.h5"
 
-
-# ### this is for custom lists (variants13 and 14 from before)
-# input_file_name = "../output/variants13_singleTSS.txt"
-# output_file_name = "../output/variants13_singleTSS.h5"
+# # custom list (keep your overrides)
+# input_file_name = "../output/variants13/variants13_singleTSS.txt"
+# output_file_name = "../output/variants13_singleTSS3.h5"
 
 print(input_file_name)
 print(output_file_name)
 
-import numpy as np
-import tensorflow_hub as hub
-import tensorflow as tf
-import time
-import os
-from dae.genomic_resources.reference_genome import build_reference_genome_from_resource_id
-
-
-refgenome = build_reference_genome_from_resource_id(refgenomeid).open()
+# -------------------- constants / loads --------------------
 INPUT_SEQ_LEN = 393_216
-model = hub.load(model_path).model
 num_bins = 896
 num_tracks = 5313
 
+refgenome = build_reference_genome_from_resource_id(refgenomeid).open()
+model = hub.load(model_path).model
 
-#########################################################################################################
-### for each row in input file, returns two strings for ref and alt sequences
+# -------------------- helpers --------------------
 def get_sequence(refgenome, chrom, position, window_size=INPUT_SEQ_LEN):
     pos = int(position)
     start = pos - (window_size // 2)
@@ -50,107 +43,100 @@ def get_sequence(refgenome, chrom, position, window_size=INPUT_SEQ_LEN):
     end = min(chr_length, end)
     seq = refgenome.get_sequence(chrom, start, end)
     seq = ('N' * pad_left) + seq + ('N' * pad_right)
-    return seq[:-1]
+    return seq[:-1]  # keep identical to your original
 
+# --- fast one-hot: build lookup table once, reuse ---
+_ALPHABET = 'ACGT'
+_NEUTRAL = 'N'
+_HASH_TABLE = np.zeros((256, len(_ALPHABET)), dtype=np.float32)
+_HASH_TABLE[np.frombuffer(_ALPHABET.encode('ascii'), dtype=np.uint8)] = np.eye(len(_ALPHABET), dtype=np.float32)
+_HASH_TABLE[np.frombuffer(_NEUTRAL.encode('ascii'), dtype=np.uint8)] = 0.0
 
-#########################################################################################################
-### returns a seq_length x 4 binary matrix
-def one_hot_encode(sequence: str,
-                   alphabet: str = 'ACGT',
-                   neutral_alphabet: str = 'N',
-                   neutral_value: any = 0,
-                   dtype=np.float32) -> np.ndarray:
-  """One-hot encode sequence."""
-  def to_uint8(string):
-    return np.frombuffer(string.encode('ascii'), dtype=np.uint8)
-  hash_table = np.zeros((np.iinfo(np.uint8).max, len(alphabet)), dtype=dtype)
-  hash_table[to_uint8(alphabet)] = np.eye(len(alphabet), dtype=dtype)
-  hash_table[to_uint8(neutral_alphabet)] = neutral_value
-  hash_table = hash_table.astype(dtype)
-  return hash_table[to_uint8(sequence)]
-
-#########################################################################################################
+def one_hot_encode(sequence: str) -> np.ndarray:
+    return _HASH_TABLE[np.frombuffer(sequence.encode('ascii'), dtype=np.uint8)]
 
 def modelpredict(sequences):
-    # One-hot encode each sequence and stack into a batch
-    seq_one_hot_batch = np.stack([one_hot_encode(seq) for seq in sequences])
-    # Batch prediction
-    prediction = model.predict_on_batch(seq_one_hot_batch)
-    # Extract 'human' track
-    data = prediction['human']
-    return data.numpy()
+    # (B, 393216, 4) float32
+    X = np.stack([one_hot_encode(seq) for seq in sequences])
+    prediction = model.predict_on_batch(X)      # dict
+    return prediction['human'].numpy()          # (B, 896, 5313) float32
 
-
-
-#########################################################################################################
-import csv
-
-# Read the file
+# -------------------- read input once to know N --------------------
 with open(input_file_name, newline='', encoding='utf-8') as f:
-    reader = csv.reader(f, delimiter='\t')  # Use tab as the separator
-    data = [row for row in reader]  # Convert to a list of rows
+    reader = csv.reader(f, delimiter='\t')
+    rows = [row for row in reader][1:]  # skip header
 
-data = data[1:]
-num_variants = len(data)
+num_variants = len(rows)
 
-## for plus strand
-# data = [row for row in data if row[2] == '+']
+# # -------------------- create HDF5 and stream-write --------------------
+# # Same final dtype as before (float16). Chunked for efficient batch writes.
+# with h5py.File(output_file_name, "w",
+#                libver="latest",
+#                rdcc_nbytes=256*1024**2,   # enlarge chunk cache (optional speed-up)
+#                rdcc_nslots=1_000_003) as h5:
 
+#     dset = h5.create_dataset(
+#         "D",
+#         shape=(num_variants, num_bins, num_tracks),
+#         dtype='f2',  # float16 on disk (same as your result_buffer)
+#         chunks=(section_size, num_bins, min(256, num_tracks)),
+#         # if you want compression (doesn't change values):
+#         # compression="gzip", compression_opts=1, shuffle=True
+#     )
 
-result_buffer = np.zeros((num_variants, num_bins, num_tracks), dtype=np.float16)
+#     sequences = []
+#     start_idx = 0
+#     section_counter = 0
 
-#########################################################################################################
-sequences = []
-positions = []
-descriptions = []
-types = []
+#     for row in rows:
+#         chrom, position = row[-2:]
+#         sequences.append(get_sequence(refgenome, chrom, position))
 
-# Initialize section counter
-section_counter = 0
-for row in data:
-    chrom, position = row[-2:]
+#         if len(sequences) == section_size:
+#             t0 = time.time()
+#             batch = modelpredict(sequences)                           # float32
+#             # cast once on write; keeps exact values post float16 cast (same as before)
+#             dset[start_idx:start_idx+len(sequences), :, :] = np.asarray(batch, dtype=np.float16)
+#             print(f"Section: {section_counter+1}, Execution Time: {time.time()-t0:.2f} seconds")
+#             sys.stdout.flush()
 
-    seq = get_sequence(refgenome, chrom, position)
+#             start_idx += len(sequences)
+#             sequences.clear()
+#             section_counter += 1
 
-    sequences.append(seq)
-    positions.append(f"{chrom}:{position}")
-
-    if len(sequences) >= section_size:
-        print(f"Reading section {section_counter + 1} with {section_size} sequences.")
-
-        start_time = time.time()
-        section_results = modelpredict(sequences)
-
-        execution_time = time.time() - start_time
-        print(f"Section: {section_counter+1}, Execution Time: {execution_time:.2f} seconds")
-        sys.stdout.flush()
-
-        result_buffer[section_counter * section_size: (section_counter + 1) * section_size] = section_results
-
-        sequences.clear()
-        section_counter += 1
-
-
-# After the main loop, handle the remaining sequences (if any)
-if len(sequences) > 0:
-    print(f"Reading final section with {len(sequences)} sequences.")
-    section_results = modelpredict(sequences)
-    
-    result_buffer[section_counter * section_size: section_counter * section_size + len(sequences)] = section_results
-
-    # Reset for the next section (optional, not strictly necessary here)
-    sequences.clear()
-
-##########################################################################################################
+#     # tail
+#     if sequences:
+#         t0 = time.time()
+#         batch = modelpredict(sequences)
+#         dset[start_idx:start_idx+len(sequences), :, :] = np.asarray(batch, dtype=np.float16)
+#         print(f"Final section ({len(sequences)} seqs), Execution Time: {time.time()-t0:.2f} seconds")
+#         sys.stdout.flush()
 
 
-import h5py
 
-with h5py.File(output_file_name, "w") as f:
-    # f.create_dataset("D", data=result_buffer, compression = 'gzip')
-    f.create_dataset("D", data=result_buffer)
+with h5py.File(output_file_name, "w") as h5:
+    dset = h5.create_dataset(
+        "D",
+        shape=(num_variants, num_bins, num_tracks),
+        dtype="f2"   # float16 on disk, same as before
+        # no chunks, no compression -> contiguous layout
+    )
 
+    start_idx = 0
+    sequences = []
+    section_counter = 0
 
-##########################################################################################################
+    for row in rows:
+        chrom, position = row[-2:]
+        sequences.append(get_sequence(refgenome, chrom, position))
 
+        if len(sequences) == section_size:
+            batch = modelpredict(sequences)                     # float32
+            dset[start_idx:start_idx+len(sequences)] = np.asarray(batch, np.float16)
+            start_idx += len(sequences)
+            sequences.clear()
+            section_counter += 1
 
+    if sequences:
+        batch = modelpredict(sequences)
+        dset[start_idx:start_idx+len(sequences)] = np.asarray(batch, np.float16)

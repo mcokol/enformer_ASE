@@ -16,10 +16,10 @@ gene_tss_file = f"{output_dir}/{genemodel}_singleTSS.txt"
 enformer_predictions_file = f"{output_dir}/{genemodel}_singleTSS.h5"
 output_file_prefix = f"{output_dir}/{genemodel}_spearman_singleTSS"
 
-# ### for variants13 experiments
-# gene_tss_file = '../output/variants13_singleTSS.txt' #f"{output_dir}/{genemodel}_singleTSS.txt"
-# enformer_predictions_file = '../output/variants13_singleTSS.h5' #f"{output_dir}/{genemodel}_singleTSS.h5"
-# output_file_prefix = '../output/variants13_spearman_singleTSS' #f"{output_dir}/{genemodel}_singleTSS"
+### for variants13 experiments
+gene_tss_file = '../output/variants13/variants13_singleTSS.txt' #f"{output_dir}/{genemodel}_singleTSS.txt"
+enformer_predictions_file = '../output/variants13_singleTSS3.h5' #f"{output_dir}/{genemodel}_singleTSS.h5"
+output_file_prefix = '../output/variants13_spearman_singleTSS' #f"{output_dir}/{genemodel}_singleTSS"
 
 if len(sys.argv) > 1:
     gene_tss_file = sys.argv[1]

@@ -1,3 +1,4 @@
+# %%
 import pandas as pd
 import h5py
 import matplotlib.pyplot as plt
@@ -25,7 +26,7 @@ plotname = "_BALANCED"
 plotname = '_ALL'
 ### for variants13 and 14
 # genemodel = 'variants13'
-# genemodel = 'variants13_spearman'
+genemodel = 'variants13_spearman'
 
 
 
@@ -111,3 +112,4 @@ plt.tight_layout()
 output_plot_file = f"../output/{genemodel}_ALL_correlation_plot{plotname}.png"
 plt.savefig(output_plot_file, dpi=300)
 plt.show()
+# %%
