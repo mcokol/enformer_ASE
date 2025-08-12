@@ -57,7 +57,7 @@ print(variants.shape)  # should be (268440, original_cols + 4)
 
 
 # Lowest and highest n
-n = 10
+n = 1
 lowest_dif_min = variants.nsmallest(n, "dif_min")
 highest_dif_max = variants.nlargest(n, "dif_max")
 extremes = pd.concat([lowest_dif_min, highest_dif_max]).drop_duplicates()
@@ -69,12 +69,7 @@ print(f"Lowest dif_min rows: {lowest_dif_min.shape}")
 print(f"Highest dif_max rows: {highest_dif_max.shape}")
 print(f"Combined extremes shape: {extremes.shape}")
 
-
 for _, row in extremes.iterrows():
-
-    # rownow = 0
-    # row = extremes.loc[rownow]
-    # print(row)
 
     # Extract metadata
     carrier_id = row["carrier person ids"]
@@ -91,10 +86,18 @@ for _, row in extremes.iterrows():
     alt = variant_data[1, :]
     dif = alt - ref
 
-    bin_to_mark = 448
+    middlebin = 448
 
     fig, axes = plt.subplots(3, 1, figsize=(10, 8), sharex=True, gridspec_kw={"hspace": 0.3})
+    
+    # Add min/max position vertical lines to all three plots
+    for ax in axes:
+        ax.axvline(row["dif_min_pos"], color="orange", linewidth=1.5, linestyle="--")
+        ax.axvline(row["dif_max_pos"], color="green", linewidth=1.5, linestyle="--")
+        ax.axvline(middlebin, color="blue", linewidth=1.5, linestyle="--")
+
     # First two share y-axis, third separate
+    
     axes[0].sharey(axes[1])
 
 
@@ -105,23 +108,40 @@ for _, row in extremes.iterrows():
     )
 
     # Plot REF
-    axes[0].axvline(bin_to_mark, color="red", linestyle="--")
-    axes[0].plot(ref, color="blue")
+    axes[0].plot(ref, color="black", linewidth=3)
     axes[0].set_ylabel("REF")
     axes[0].grid(True)
 
+
+
+
+
     # Plot ALT
-    axes[1].axvline(bin_to_mark, color="red", linestyle="--")
-    axes[1].plot(alt, color="orange")
+    axes[1].plot(alt, color="black", linewidth=3)
     axes[1].set_ylabel("ALT")
     axes[1].grid(True)
 
     # Plot DIF
-    axes[2].axvline(bin_to_mark, color="red", linestyle="--")
-    axes[2].plot(dif, color="green")
+    axes[2].plot(dif, color="black", linewidth=3)
     axes[2].set_ylabel("DIF")
     axes[2].set_xlabel("Bins")
     axes[2].grid(True)
+
+    # Add 4 rows of text in top-left corner of REF plot
+    text_str = (
+        f"dif_min: {row['dif_min']}\n"
+        f"dif_min_pos: {row['dif_min_pos']}\n"
+        f"dif_max: {row['dif_max']}\n"
+        f"dif_max_pos: {row['dif_max_pos']}"
+    )
+    axes[2].text(
+        0.02, 0.98, text_str,
+        transform=axes[2].transAxes,
+        fontsize=10,
+        verticalalignment='top',
+        horizontalalignment='left',
+        bbox=dict(facecolor='white', alpha=0.7, edgecolor='none')
+    )
 
     plt.show()
 

@@ -5,8 +5,8 @@ refgenomeid = "hg38/genomes/GRCh38-hg38"
 section_size = 5
 model_path = "https://tfhub.dev/deepmind/enformer/1"
 
-# genemodel = "refSeq_v20240129"
-genemodel = "MANE/1.3"
+genemodel = "refSeq_v20240129"
+# genemodel = "MANE/1.3"
 # genemodel = "GENCODE/46/comprehensive/ALL"
 # genemodel = "GENCODE/46/basic/PRI"
 
