@@ -16,9 +16,9 @@ genemodel = "refSeq_v20240129".replace("/", "_")
 input_file_name = "../output/" + genemodel + "_singleTSS.txt"
 output_file_name = "../output/" + genemodel + "_singleTSS.h5"
 
-# # custom list (keep your overrides)
-# input_file_name = "../output/variants13/variants13_singleTSS.txt"
-# output_file_name = "../output/variants13_singleTSS3.h5"
+# custom list (keep your overrides)
+input_file_name = "../output/variants13/variants13_singleTSS.txt"
+output_file_name = "../output/variants13_singleTSS3.h5"
 
 print(input_file_name)
 print(output_file_name)
@@ -67,51 +67,6 @@ with open(input_file_name, newline='', encoding='utf-8') as f:
     rows = [row for row in reader][1:]  # skip header
 
 num_variants = len(rows)
-
-# # -------------------- create HDF5 and stream-write --------------------
-# # Same final dtype as before (float16). Chunked for efficient batch writes.
-# with h5py.File(output_file_name, "w",
-#                libver="latest",
-#                rdcc_nbytes=256*1024**2,   # enlarge chunk cache (optional speed-up)
-#                rdcc_nslots=1_000_003) as h5:
-
-#     dset = h5.create_dataset(
-#         "D",
-#         shape=(num_variants, num_bins, num_tracks),
-#         dtype='f2',  # float16 on disk (same as your result_buffer)
-#         chunks=(section_size, num_bins, min(256, num_tracks)),
-#         # if you want compression (doesn't change values):
-#         # compression="gzip", compression_opts=1, shuffle=True
-#     )
-
-#     sequences = []
-#     start_idx = 0
-#     section_counter = 0
-
-#     for row in rows:
-#         chrom, position = row[-2:]
-#         sequences.append(get_sequence(refgenome, chrom, position))
-
-#         if len(sequences) == section_size:
-#             t0 = time.time()
-#             batch = modelpredict(sequences)                           # float32
-#             # cast once on write; keeps exact values post float16 cast (same as before)
-#             dset[start_idx:start_idx+len(sequences), :, :] = np.asarray(batch, dtype=np.float16)
-#             print(f"Section: {section_counter+1}, Execution Time: {time.time()-t0:.2f} seconds")
-#             sys.stdout.flush()
-
-#             start_idx += len(sequences)
-#             sequences.clear()
-#             section_counter += 1
-
-#     # tail
-#     if sequences:
-#         t0 = time.time()
-#         batch = modelpredict(sequences)
-#         dset[start_idx:start_idx+len(sequences), :, :] = np.asarray(batch, dtype=np.float16)
-#         print(f"Final section ({len(sequences)} seqs), Execution Time: {time.time()-t0:.2f} seconds")
-#         sys.stdout.flush()
-
 
 
 with h5py.File(output_file_name, "w") as h5:
