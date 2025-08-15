@@ -7,9 +7,10 @@ import pandas as pd
 genemodel = "MANE/1.3"
 genemodel = "refSeq_v20240129"
 # genemodel = "GENCODE/46/comprehensive/ALL"
-# genemodel = "GENCODE/46/basic/PRI"
+genemodel = "GENCODE/46/basic/PRI"
 genemodelpath = "hg38/gene_models/" + genemodel
 
+print(genemodelpath)
 from dae.genomic_resources.gene_models import build_gene_models_from_resource_id
 GM = build_gene_models_from_resource_id(genemodelpath).load() 
 
@@ -30,7 +31,6 @@ df["pos"] = df.apply(lambda row: row["left"] if row["strand"] == "+" else row["r
 df = df.drop(columns = ['left', 'right'])
 ### remove noncanonical chromosomes
 df = df[df["chrom"].str.len() <= 5]
-
 
 ### if a gene is repeated, then it has multiple TSS, drop them #################################
 gene_counts = df['gene'].value_counts()

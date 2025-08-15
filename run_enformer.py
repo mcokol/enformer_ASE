@@ -1,37 +1,55 @@
-import sys
-import time
-import csv
-import numpy as np
-import tensorflow_hub as hub
-import tensorflow as tf
-import h5py
-from dae.genomic_resources.reference_genome import build_reference_genome_from_resource_id
 
-# -------------------- config --------------------
+import sys
+
 refgenomeid = "hg38/genomes/GRCh38-hg38"
 section_size = 5
 model_path = "https://tfhub.dev/deepmind/enformer/1"
 
-genemodel = "refSeq_v20240129".replace("/", "_")
+genemodel = "refSeq_v20240129"
+genemodel = "MANE/1.3"
+genemodel = "GENCODE/46/basic/PRI"
+
+genemodel = genemodel.replace("/", "_")
 input_file_name = "../output/" + genemodel + "_singleTSS.txt"
 output_file_name = "../output/" + genemodel + "_singleTSS.h5"
 
-# custom list (keep your overrides)
-input_file_name = "../output/variants13/variants13_singleTSS.txt"
-output_file_name = "../output/variants13_singleTSS3.h5"
+### this is for custom lists (variants13 and 14 from before)
+input_file_name = "../output/variants13_singleTSS.txt"
+output_file_name = "../output/variants13_singleTSS.h5"
 
 print(input_file_name)
 print(output_file_name)
 
-# -------------------- constants / loads --------------------
+import numpy as np
+import tensorflow_hub as hub
+import tensorflow as tf
+import time
+import os
+from dae.genomic_resources.reference_genome import build_reference_genome_from_resource_id
+import h5py
+
+# # === GPU soft check during h5 streaming to avoid getting killed by GPU check =======
+# gpus = tf.config.list_physical_devices('GPU')
+# if gpus:
+#     for g in gpus:
+#         try:
+#             tf.config.experimental.set_memory_growth(g, True)
+#         except Exception:
+#             pass
+#     print("Using GPUs:", [g.name for g in gpus])
+# else:
+#     os.environ["CUDA_VISIBLE_DEVICES"] = "-1"   # avoid CUDA init noise
+#     print("No GPUs detected; running on CPU.")
+# # ==============================================================================
+
+refgenome = build_reference_genome_from_resource_id(refgenomeid).open()
 INPUT_SEQ_LEN = 393_216
+model = hub.load(model_path).model
 num_bins = 896
 num_tracks = 5313
 
-refgenome = build_reference_genome_from_resource_id(refgenomeid).open()
-model = hub.load(model_path).model
-
 # -------------------- helpers --------------------
+#########################################################################################################
 def get_sequence(refgenome, chrom, position, window_size=INPUT_SEQ_LEN):
     pos = int(position)
     start = pos - (window_size // 2)
@@ -45,36 +63,51 @@ def get_sequence(refgenome, chrom, position, window_size=INPUT_SEQ_LEN):
     seq = ('N' * pad_left) + seq + ('N' * pad_right)
     return seq[:-1]  # keep identical to your original
 
-# --- fast one-hot: build lookup table once, reuse ---
-_ALPHABET = 'ACGT'
-_NEUTRAL = 'N'
-_HASH_TABLE = np.zeros((256, len(_ALPHABET)), dtype=np.float32)
-_HASH_TABLE[np.frombuffer(_ALPHABET.encode('ascii'), dtype=np.uint8)] = np.eye(len(_ALPHABET), dtype=np.float32)
-_HASH_TABLE[np.frombuffer(_NEUTRAL.encode('ascii'), dtype=np.uint8)] = 0.0
 
-def one_hot_encode(sequence: str) -> np.ndarray:
-    return _HASH_TABLE[np.frombuffer(sequence.encode('ascii'), dtype=np.uint8)]
+#########################################################################################################
+### returns a seq_length x 4 binary matrix
+def one_hot_encode(sequence: str,
+                   alphabet: str = 'ACGT',
+                   neutral_alphabet: str = 'N',
+                   neutral_value: any = 0,
+                   dtype=np.float32) -> np.ndarray:
+  """One-hot encode sequence."""
+  def to_uint8(string):
+    return np.frombuffer(string.encode('ascii'), dtype=np.uint8)
+  hash_table = np.zeros((np.iinfo(np.uint8).max, len(alphabet)), dtype=dtype)
+  hash_table[to_uint8(alphabet)] = np.eye(len(alphabet), dtype=dtype)
+  hash_table[to_uint8(neutral_alphabet)] = neutral_value
+  hash_table = hash_table.astype(dtype)
+  return hash_table[to_uint8(sequence)]
+
+#########################################################################################################
+# def modelpredict(sequences):
+#     # (B, 393216, 4) float32
+#     X = np.stack([one_hot_encode(seq) for seq in sequences])
+#     prediction = model.predict_on_batch(X)      # dict
+#     return prediction['human'].numpy()          # (B, 896, 5313) float32
 
 def modelpredict(sequences):
-    # (B, 393216, 4) float32
-    X = np.stack([one_hot_encode(seq) for seq in sequences])
-    prediction = model.predict_on_batch(X)      # dict
-    return prediction['human'].numpy()          # (B, 896, 5313) float32
+    # One-hot encode each sequence and stack into a batch
+    seq_one_hot_batch = np.stack([one_hot_encode(seq) for seq in sequences])
+    # Batch prediction
+    prediction = model.predict_on_batch(seq_one_hot_batch)
+    return prediction['human'].numpy()
 
+#########################################################################################################
 # -------------------- read input once to know N --------------------
+import csv
 with open(input_file_name, newline='', encoding='utf-8') as f:
     reader = csv.reader(f, delimiter='\t')
     rows = [row for row in reader][1:]  # skip header
-
 num_variants = len(rows)
-
+num_sections = num_variants // section_size
 
 with h5py.File(output_file_name, "w") as h5:
     dset = h5.create_dataset(
         "D",
         shape=(num_variants, num_bins, num_tracks),
         dtype="f2"   # float16 on disk, same as before
-        # no chunks, no compression -> contiguous layout
     )
 
     start_idx = 0
@@ -86,11 +119,15 @@ with h5py.File(output_file_name, "w") as h5:
         sequences.append(get_sequence(refgenome, chrom, position))
 
         if len(sequences) == section_size:
+            start_time = time.time()
             batch = modelpredict(sequences)                     # float32
             dset[start_idx:start_idx+len(sequences)] = np.asarray(batch, np.float16)
             start_idx += len(sequences)
             sequences.clear()
             section_counter += 1
+            # print(section)
+            execution_time = time.time() - start_time
+            print(f"Section: {section_counter+1} of {num_sections}, Execution Time: {execution_time:.2f} seconds")
 
     if sequences:
         batch = modelpredict(sequences)
