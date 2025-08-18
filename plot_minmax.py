@@ -1,64 +1,26 @@
-
 # %%
-import h5py
-import numpy as np
+
 import pandas as pd
 import matplotlib.pyplot as plt
+import h5py
 import os
 
+inputpath = "../output/denovo_minmax_output.txt"
+variants = pd.read_csv(inputpath, sep="\t")
+print(variants.head())
 
-
-# Load variant info (tab-separated)
-variants = pd.read_csv("../input/ASEvariantinfo.txt", sep="\t")
-print(f"Loaded variants: shape={variants.shape}")
-# print(variants.head())
-# print(variants.columns)
-columns_to_keep = ['number', 'index', 'min', 'max', 'family id', 'study', 
-                   'study phenotype', 'location', 'variant', 
-                   'CHROM', 'POS', 'REF', 'ALT', 'carrier person ids']
-columns_to_keep = ['carrier person ids', 
-                   'CHROM', 'POS', 'REF', 'ALT', 'worst effect', 'genes']
-
-variants = variants[columns_to_keep]
-
-# Path to your file
-file_path = "../output/enformer_predictions_track5110.h5"
 
 # Open the file and read dataset D
+file_path = "../output/enformer_predictions_track5110.h5"
 with h5py.File(file_path, "r") as h5file:
     data = h5file["D"][:]  # Load entire dataset into a NumPy array
-
 print(f"Loaded dataset 'D' with shape: {data.shape}")
 
 # Separate ref (index 0) and alt (index 1)
 ref = data[:, 0, :]
 alt = data[:, 1, :]
-
 # Difference (alt - ref)
 dif = alt - ref  # shape: (variants, bins)
-
-# Calculate stats
-min_vals = np.min(dif, axis=1)
-min_pos = np.argmin(dif, axis=1)
-max_vals = np.max(dif, axis=1)
-max_pos = np.argmax(dif, axis=1)
-
-# Stack into result (variants, 4)
-result = np.column_stack((min_vals, min_pos, max_vals, max_pos))
-
-print(f"Result shape: {result.shape}")
-result_cols = ["dif_min", "dif_min_pos", "dif_max", "dif_max_pos"]
-
-# Add columns to DataFrame
-variants[result_cols] = result
-
-print(variants.head())
-print(variants.shape)  # should be (268440, original_cols + 4)
-
-
-outputpath = "../output/denovo_minmax_output.txt"
-variants.to_csv(outputpath, sep="\t", index=False)
-
 
 
 # # Lowest and highest n
@@ -70,9 +32,30 @@ variants.to_csv(outputpath, sep="\t", index=False)
 # extremes["variantno"] = extremes.index
 # extremes = extremes.reset_index(drop=True)
 
-# print(f"Lowest dif_min rows: {lowest_dif_min.shape}")
-# print(f"Highest dif_max rows: {highest_dif_max.shape}")
-# print(f"Combined extremes shape: {extremes.shape}")
+n = 100
+lowest_dif_min = variants.nsmallest(n, "dif_min").copy()
+lowest_dif_min["extreme_type"] = "min"
+highest_dif_max = variants.nlargest(n, "dif_max").copy()
+highest_dif_max["extreme_type"] = "max"
+# Concatenate both
+extremes = pd.concat([lowest_dif_min, highest_dif_max])
+# If a row appears in both, mark as "both"
+extremes = extremes.groupby(extremes.index).agg(
+    lambda col: "both" if (col.nunique() > 1 and col.name == "extreme_type") else col.iloc[0]
+)
+# Add variantno = original index
+extremes = extremes.copy()
+extremes["variantno"] = extremes.index
+# Reset index for a clean 0..N
+extremes = extremes.reset_index(drop=True)
+
+
+print(f"Lowest dif_min rows: {lowest_dif_min.shape}")
+print(f"Highest dif_max rows: {highest_dif_max.shape}")
+print(f"Combined extremes shape: {extremes.shape}")
+
+print(extremes)
+
 
 # for _, row in extremes.iterrows():
 
@@ -117,10 +100,6 @@ variants.to_csv(outputpath, sep="\t", index=False)
 #     axes[0].set_ylabel("REF")
 #     axes[0].grid(True)
 
-
-
-
-
 #     # Plot ALT
 #     axes[1].plot(alt, color="black", linewidth=3)
 #     axes[1].set_ylabel("ALT")
@@ -161,3 +140,7 @@ variants.to_csv(outputpath, sep="\t", index=False)
 
 #     print(f"Plot saved to: {save_path}")
 #     # %%
+
+
+
+
