@@ -1,4 +1,3 @@
-
 import sys
 
 refgenomeid = "hg38/genomes/GRCh38-hg38"
@@ -8,6 +7,7 @@ model_path = "https://tfhub.dev/deepmind/enformer/1"
 genemodel = "refSeq_v20240129"
 genemodel = "MANE/1.3"
 genemodel = "GENCODE/46/basic/PRI"
+genemodel = 'GENCODE_46_comprehensive_ALL'
 
 genemodel = genemodel.replace("/", "_")
 input_file_name = "../output/" + genemodel + "_singleTSS.txt"
@@ -27,20 +27,6 @@ import time
 import os
 from dae.genomic_resources.reference_genome import build_reference_genome_from_resource_id
 import h5py
-
-# # === GPU soft check during h5 streaming to avoid getting killed by GPU check =======
-# gpus = tf.config.list_physical_devices('GPU')
-# if gpus:
-#     for g in gpus:
-#         try:
-#             tf.config.experimental.set_memory_growth(g, True)
-#         except Exception:
-#             pass
-#     print("Using GPUs:", [g.name for g in gpus])
-# else:
-#     os.environ["CUDA_VISIBLE_DEVICES"] = "-1"   # avoid CUDA init noise
-#     print("No GPUs detected; running on CPU.")
-# # ==============================================================================
 
 refgenome = build_reference_genome_from_resource_id(refgenomeid).open()
 INPUT_SEQ_LEN = 393_216
@@ -81,12 +67,6 @@ def one_hot_encode(sequence: str,
   return hash_table[to_uint8(sequence)]
 
 #########################################################################################################
-# def modelpredict(sequences):
-#     # (B, 393216, 4) float32
-#     X = np.stack([one_hot_encode(seq) for seq in sequences])
-#     prediction = model.predict_on_batch(X)      # dict
-#     return prediction['human'].numpy()          # (B, 896, 5313) float32
-
 def modelpredict(sequences):
     # One-hot encode each sequence and stack into a batch
     seq_one_hot_batch = np.stack([one_hot_encode(seq) for seq in sequences])
