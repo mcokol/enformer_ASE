@@ -121,36 +121,54 @@ for _, row in extremes.iterrows():
     # ---------------- Figure & subplots ----------------
     fig, axes = plt.subplots(4, 1, figsize=(10, 10), gridspec_kw={"hspace": 0.35})
 
-    # Add min/max position vertical lines to first three plots (thin dashed; keep your colors)
-    for ax in axes[:3]:
-        ax.axvline(row["dif_min_pos"], color="orange", linewidth=1.5, linestyle="--")
-        ax.axvline(row["dif_max_pos"], color="green", linewidth=1.5, linestyle="--")
-        ax.axvline(middlebin, color="blue", linewidth=1.5, linestyle="--")
 
-    # First two share y-axis
-    axes[0].sharey(axes[1])
+    # ---------------- Figure & subplots ----------------
 
-    # Figure title
+    # Global title (moved here; no per-subplot title on #4)
     fig.suptitle(
-        f"variantno: {vno} | Carrier: {carrier_id} | {chrom}:{pos} {ref_base}>{alt_base}",
-        fontsize=14, fontweight="bold", y=0.98
+        f"variantno: {vno} | {chrom}:{pos} {ref_base}>{alt_base} | extreme_type: {extreme_type}",
+        fontsize=14, fontweight="bold", y=0.99
     )
 
-    # ---- Plot REF / ALT / DIF (subplots 1–3) ----
-    axes[0].plot(ref, color="black", linewidth=3)
+    # --------- Subplot 1: REF ----------
+    axes[0].plot(ref, color="black", linewidth=2)
+    # full-height dashed verticals (green/red)
+    if not np.isnan(row["dif_min_pos"]):
+        axes[0].axvline(row["dif_min_pos"], color="red", linestyle="--", linewidth=1.5)
+    if not np.isnan(row["dif_max_pos"]):
+        axes[0].axvline(row["dif_max_pos"], color="green", linestyle="--", linewidth=1.5)
     axes[0].set_ylabel("REF")
     axes[0].grid(True)
+    # empty circle at middle bin
+    yl0, yl1 = axes[0].get_ylim()
+    axes[0].plot(448, (yl0 + yl1) / 2, "o", markersize=12, markerfacecolor="none", markeredgecolor="black", zorder=5)
 
-    axes[1].plot(alt, color="black", linewidth=3)
+    # --------- Subplot 2: ALT ----------
+    axes[1].plot(alt, color="black", linewidth=2)
+    if not np.isnan(row["dif_min_pos"]):
+        axes[1].axvline(row["dif_min_pos"], color="red", linestyle="--", linewidth=1.5)
+    if not np.isnan(row["dif_max_pos"]):
+        axes[1].axvline(row["dif_max_pos"], color="green", linestyle="--", linewidth=1.5)
     axes[1].set_ylabel("ALT")
     axes[1].grid(True)
+    # share y with REF
+    axes[0].sharey(axes[1])
+    yl0, yl1 = axes[1].get_ylim()
+    axes[1].plot(448, (yl0 + yl1) / 2, "o", markersize=12, markerfacecolor="none", markeredgecolor="black", zorder=5)
 
-    axes[2].plot(dif, color="black", linewidth=3)
-    axes[2].set_ylabel("DIF")
+    # --------- Subplot 3: DIF ----------
+    axes[2].plot(dif, color="black", linewidth=2)
+    if not np.isnan(row["dif_min_pos"]):
+        axes[2].axvline(row["dif_min_pos"], color="red", linestyle="--", linewidth=1.5)
+    if not np.isnan(row["dif_max_pos"]):
+        axes[2].axvline(row["dif_max_pos"], color="green", linestyle="--", linewidth=1.5)
+    axes[2].set_ylabel("DIF = ALT - REF")
     axes[2].set_xlabel("Bins")
     axes[2].grid(True)
+    yl0, yl1 = axes[2].get_ylim()
+    axes[2].plot(448, (yl0 + yl1) / 2, "o", markersize=12, markerfacecolor="none", markeredgecolor="black", zorder=5)
 
-    # Add 4 rows of text in top-left corner of DIF plot
+    # Corner text on DIF
     text_str = (
         f"dif_min: {row['dif_min']}\n"
         f"dif_min_pos: {row['dif_min_pos']}\n"
@@ -158,72 +176,73 @@ for _, row in extremes.iterrows():
         f"dif_max_pos: {row['dif_max_pos']}"
     )
     axes[2].text(
-        0.02, 0.98, text_str,
-        transform=axes[2].transAxes,
-        fontsize=10,
-        verticalalignment='top',
-        horizontalalignment='left',
+        0.02, 0.98, text_str, transform=axes[2].transAxes, fontsize=10,
+        verticalalignment='top', horizontalalignment='left',
         bbox=dict(facecolor='white', alpha=0.7, edgecolor='none')
     )
 
-    # ---- Fourth subplot: gene track with base-pair x-axis ----
+    # --------- Subplot 4: Transcript track (base-pair x-axis) ----------
     ax = axes[3]
     ax.set_xlim(0, N_BINS)
-    # y-limits = number of transcripts (or at least 1 to keep space)
     n_tx = max(1, len(overlap))
     ax.set_ylim(0, n_tx)
 
-    # Plot transcripts if any
-    if n_tx > 0:
+    # Plot transcripts as black lines + arrowheads placed at the VISIBLE edge
+    if len(overlap) > 0:
         for i, tx in overlap.iterrows():
             gene_name = str(tx["gene"])
             tx_start, tx_end = int(tx["start"]), int(tx["end"])
             tx_strand = str(tx["strand"])
 
             b_start = coord_to_bin_raw(tx_start, win_start)
-            b_end = coord_to_bin_raw(tx_end, win_start)
+            b_end   = coord_to_bin_raw(tx_end,   win_start)
 
-            # Visible portion clipped to plotting window
             x0_vis = np.clip(min(b_start, b_end), 0, N_BINS)
             x1_vis = np.clip(max(b_start, b_end), 0, N_BINS)
             y = i + 0.5
 
-            # Black transcript line
             ax.hlines(y, x0_vis, x1_vis, lw=2, color="black")
-            # Gene name left of visible start
-            ax.text(x0_vis - 5, y, gene_name, ha="right", va="center", fontsize=11, clip_on=False, color="black")
+            ax.text(x0_vis - 5, y, gene_name, ha="right", va="center",
+                    fontsize=11, clip_on=False, color="black")
 
-            # Black arrow at strand end (can be outside window)
+            # Place arrow at visible edge so it shows even if true end lies outside
             if tx_strand == "+":
-                ax.annotate("", xy=(b_end, y), xytext=(b_end - 5, y),
-                            arrowprops=dict(arrowstyle="->", lw=1.3, color="black"), clip_on=False)
+                arrow_tip  = x1_vis
+                arrow_base = max(arrow_tip - 5, 0)
+                ax.annotate("", xy=(arrow_tip, y), xytext=(arrow_base, y),
+                            arrowprops=dict(arrowstyle="->", lw=4, color="black"),
+                            clip_on=False)
             else:
-                ax.annotate("", xy=(b_start, y), xytext=(b_start + 5, y),
-                            arrowprops=dict(arrowstyle="->", lw=1.3, color="black"), clip_on=False)
+                arrow_tip  = x0_vis
+                arrow_base = min(arrow_tip + 5, N_BINS)
+                ax.annotate("", xy=(arrow_tip, y), xytext=(arrow_base, y),
+                            arrowprops=dict(arrowstyle="->", lw=4, color="black"),
+                            clip_on=False)
 
-    # Vertical half-lines for dif_min_pos (red) and dif_max_pos (green)
+    # Half-height verticals with dashed/solid based on extreme_type
     mid_y = n_tx / 2.0
-    # Default dashed; make the "extreme" side(s) solid & thicker
-    ls_min, lw_min = "--", 1.5
-    ls_max, lw_max = "--", 1.5
+    ls_min, ls_max = "--", "--"
     if extreme_type == "min":
-        ls_min, lw_min = "-", 3
+        ls_min, ls_max = "-", "--"
     elif extreme_type == "max":
-        ls_max, lw_max = "-", 3
+        ls_min, ls_max = "--", "-"
     elif extreme_type == "both":
-        ls_min, lw_min = "-", 3
-        ls_max, lw_max = "-", 3
+        ls_min, ls_max = "-", "-"
+
+    # (optional) thicker for solid
+    lw_min = 3 if ls_min == "-" else 1.5
+    lw_max = 3 if ls_max == "-" else 1.5
 
     if not np.isnan(row["dif_min_pos"]):
-        ax.vlines(row["dif_min_pos"], 0, mid_y, color="red", linestyle=ls_min, lw=lw_min)
+        ax.vlines(row["dif_min_pos"], 0, mid_y, color="red", linestyle=ls_min, linewidth=lw_min)
     if not np.isnan(row["dif_max_pos"]):
-        ax.vlines(row["dif_max_pos"], mid_y, n_tx, color="green", linestyle=ls_max, lw=lw_max)
+        ax.vlines(row["dif_max_pos"], mid_y, n_tx, color="green", linestyle=ls_max, linewidth=lw_max)
 
-    # Large black dot at the middle bin and vertical center
+    # Empty center circle on transcript track
     mid_bin = N_BINS // 2
-    ax.plot(mid_bin, mid_y, "o", color="black", markersize=12, zorder=5)
+    ax.plot(mid_bin, mid_y, "o", markersize=12, markerfacecolor="none", markeredgecolor="black", zorder=5)
 
-    # X-axis in base pairs (keep same tick positions as bins)
+    # X-axis in base pairs
     tick_bins = np.arange(0, N_BINS + 1, 128)
     tick_bases = win_start + tick_bins * BIN_SIZE
     ax.set_xticks(tick_bins)
@@ -232,12 +251,14 @@ for _, row in extremes.iterrows():
 
     ax.set_yticks([])
     ax.grid(axis="x", alpha=0.2)
-    ax.set_title(f"{chrom}:{win_start:,}-{win_end:,} (center {pos:,})", fontsize=11)
 
-    # -------- Save per-variant plot --------
-    plt.tight_layout(rect=[0, 0, 1, 0.95])
-    save_path = os.path.join(output_dir, f"variant_{vno}.png")
+    # -------- Save/show --------|
+    plt.tight_layout(rect=[0, 0, 1, 0.96])
+    # save_path = os.path.join(output_dir, f"variant_{vno}.png")
+    save_path = os.path.join(output_dir, f"variant_{vno}_{extreme_type}.png")
     plt.savefig(save_path, dpi=300)
     plt.show()
     print(f"Plot saved to: {save_path}")
+
+
 # %%
