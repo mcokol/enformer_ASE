@@ -6,10 +6,10 @@ import numpy as np
 
 genemodel = "refSeq_v20240129"
 # genemodel = 'refSeq_v20240129_spearman'
-# genemodel = "MANE/1.3"
+genemodel = "MANE/1.3"
 
 ### for variants13 and 14
-genemodel = 'variants13'
+# genemodel = 'variants13'
 
 
 genemodel = genemodel + '_spearman'

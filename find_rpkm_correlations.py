@@ -9,10 +9,9 @@ import time
 
 # Redo the parameter parsing through the argparse module
 genemodel = "refSeq_v20240129"
-# genemodel = "GENCODE_46_basic_PRI"
 genemodel = "MANE/1.3"
-# genemodel = "GENCODE/46/comprehensive/ALL"
-
+genemodel = "GENCODE_46_basic_PRI"
+genemodel = "GENCODE/46/comprehensive/ALL"
 
 genemodel = genemodel.replace("/", "_")
 
