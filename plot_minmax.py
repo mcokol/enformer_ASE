@@ -1,3 +1,5 @@
+
+
 # %%
 
 import pandas as pd
@@ -120,6 +122,8 @@ for _, row in extremes.iterrows():
 
     # ---------------- Figure & subplots ----------------
     fig, axes = plt.subplots(4, 1, figsize=(10, 10), gridspec_kw={"hspace": 0.35})
+    for ax in axes[:3]:
+        ax.set_xlim(0, 896)
 
 
     # ---------------- Figure & subplots ----------------
@@ -254,7 +258,6 @@ for _, row in extremes.iterrows():
 
     # -------- Save/show --------|
     plt.tight_layout(rect=[0, 0, 1, 0.96])
-    # save_path = os.path.join(output_dir, f"variant_{vno}.png")
     save_path = os.path.join(output_dir, f"variant_{vno}_{extreme_type}.png")
     plt.savefig(save_path, dpi=300)
     plt.show()
