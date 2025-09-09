@@ -7,7 +7,7 @@ import pandas as pd
 genemodel = "MANE/1.3"
 genemodel = "refSeq_v20240129"
 genemodel = "GENCODE/46/basic/PRI"
-genemodel = "GENCODE/46/comprehensive/ALL"
+# genemodel = "GENCODE/46/comprehensive/ALL"
 
 genemodelpath = "hg38/gene_models/" + genemodel
 
@@ -38,6 +38,8 @@ gene_counts = df['gene'].value_counts()
 unique_genes = gene_counts[gene_counts == 1].index
 df = df[df['gene'].isin(unique_genes)]
 
+print(df.shape)
+
 ### load the experimental RNA rpkms ############################################################
 rpkmdf = pd.read_csv("../input/median_rpkms.txt", sep="\t")
 
@@ -45,6 +47,7 @@ rpkmdf = pd.read_csv("../input/median_rpkms.txt", sep="\t")
 ### result has five columns gene, rpkm, strand, chrom, pos
 result = pd.merge(df, rpkmdf, on="gene", how="inner")
 result = result.dropna()
+print(result.shape)
 
 # result size for different gene models
 # genemodel = "MANE/1.3                         18724
@@ -56,7 +59,6 @@ result = result.dropna()
 # Keep only rows where chrom_x equals chrom_y
 result = result[result["chrom_x"] == result["chrom_y"]]
 result = result.drop(columns=["chrom_y"]).rename(columns={"chrom_x": "chrom"})
-print(result.shape)
 
 # renameand order columns to match onenote plan
 result = result.rename(columns={'median_rpkm': 'rpkm'})
