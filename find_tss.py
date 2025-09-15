@@ -60,12 +60,11 @@ print(result.shape)
 
 # ### if chromosomes do not match, drop those rows (this didnt happen for these 4 gene models)
 result = result[(result["chrom_x"] == result["chrom_y"]) | (result["chrom_y"].isna())]
-
 result = result.drop(columns=["chrom_y"]).rename(columns={"chrom_x": "chrom"})
 
 # renameand order columns to match onenote plan
 result = result.rename(columns={'median_rpkm': 'rpkm'})
-result = result[['gene', 'rpkm', 'strand', 'chrom', 'pos', 'is_coding']]
+result = result[['gene', 'rpkm', 'strand', 'is_coding', 'chrom', 'pos']]
 print("unique genes with rpkm")
 print(result.shape)
 ### replace / so it isnt interpreted as directory

@@ -1,21 +1,17 @@
 import sys
 
 refgenomeid = "hg38/genomes/GRCh38-hg38"
-section_size = 5
+section_size = 10
 model_path = "https://tfhub.dev/deepmind/enformer/1"
-
+print(section_size)
 genemodel = "refSeq_v20240129"
-genemodel = "MANE/1.3"
+# genemodel = "MANE/1.3"
 genemodel = "GENCODE/46/basic/PRI"
 genemodel = 'GENCODE_46_comprehensive_ALL'
 
 genemodel = genemodel.replace("/", "_")
 input_file_name = "../output/" + genemodel + "_singleTSS.txt"
 output_file_name = "../output/" + genemodel + "_singleTSS.h5"
-
-### this is for custom lists (variants13 and 14 from before)
-input_file_name = "../output/variants13_singleTSS.txt"
-output_file_name = "../output/variants13_singleTSS.h5"
 
 print(input_file_name)
 print(output_file_name)
@@ -79,6 +75,8 @@ def modelpredict(sequences):
 import csv
 with open(input_file_name, newline='', encoding='utf-8') as f:
     reader = csv.reader(f, delimiter='\t')
+    # header = next(reader)  # skip header
+    # rows = [row for _, row in zip(range(100), reader)]
     rows = [row for row in reader][1:]  # skip header
 num_variants = len(rows)
 num_sections = num_variants // section_size

@@ -11,7 +11,7 @@ import time
 genemodel = "refSeq_v20240129"
 genemodel = "MANE/1.3"
 genemodel = "GENCODE_46_basic_PRI"
-genemodel = "GENCODE/46/comprehensive/ALL"
+# genemodel = "GENCODE/46/comprehensive/ALL"
 
 genemodel = genemodel.replace("/", "_")
 
