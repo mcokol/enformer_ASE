@@ -7,7 +7,7 @@ print(section_size)
 genemodel = "refSeq_v20240129"
 # genemodel = "MANE/1.3"
 genemodel = "GENCODE/46/basic/PRI"
-genemodel = 'GENCODE_46_comprehensive_ALL'
+# genemodel = 'GENCODE_46_comprehensive_ALL'
 
 genemodel = genemodel.replace("/", "_")
 input_file_name = "../output/" + genemodel + "_singleTSS.txt"
